@@ -1,65 +1,225 @@
 import pandas
 import numpy
-from sklearn.linear_model import SGDClassifier
+from sklearn.linear_model import SGDClassifier, PassiveAggressiveClassifier
 from sklearn.grid_search import GridSearchCV
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.preprocessing import StandardScaler
+from sklearn.naive_bayes import GaussianNB, MultinomialNB, BernoulliNB
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
 from sklearn.metrics import roc_auc_score
+from sklearn import pipeline
+from sklearn.kernel_approximation import Nystroem, RBFSampler
+from sklearn.ensemble import RandomForestClassifier
 
 data_dir = "../data/"
 input_filename = data_dir + "HIGGS.csv"
 
-# Read in 1 million examples at a time
 num_examples = 11 * 10**6
-block_size = 10**6
+num_test_examples = 5 * 10**5
+num_train_examples = num_examples - num_test_examples
+block_size = 2 * 10**5
 
-
-
-# Generate test set
-df = pandas.read_csv(input_filename, nrows=5 * 10**5)
+# Generate test set (same as in paper)
+df = pandas.read_csv(input_filename, skiprows=num_train_examples, nrows=num_test_examples)
 X_test = df.values[:, 1:]
-y_test = df.values[:, 0]
+y_test = numpy.array(df.values[:, 0], numpy.int)
+
+print(numpy.bincount(y_test))
 
 # standardise data
 scaler = StandardScaler()
-df = pandas.read_csv(input_filename, skiprows=5 * 10**5, nrows=5 * 10**5)
+df = pandas.read_csv(input_filename, skiprows=0, nrows=block_size)
 X_train = df.values[:, 1:]
-y_train = df.values[:, 0]
+y_train = numpy.array(df.values[:, 0], numpy.int)
 
 scaler.fit(X_train)
+X_train = scaler.transform(X_train)
 X_test = scaler.transform(X_test)
 
 # Do some model selection on this dataset
-metric = "accuracy"
+metric = "f1"
 
 
-learner = SGDClassifier(penalty="l1", n_jobs=-1, n_iter=10)
-param_grid = [{"penalty": ["l1", "l2"], "alpha": 10.0**-numpy.arange(1, 7)}]
-grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+def smallscale():
+    # Small scale learning
+    learner_list = []
 
-learner = MultinomialNB()
-param_grid = [{"alpha": numpy.arange(0, 1, 0.1)}]
-grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    gammas = 2.0**numpy.arange(-4, 6)
 
-grid_search.fit(X_train, y_train)
-learner = grid_search.best_estimator_
-print(learner)
+    feature_transformer = RBFSampler(gamma=.2, random_state=1)
+    learner = PassiveAggressiveClassifier(n_iter=10)
+    learner_pipeline = pipeline.Pipeline([("feature_transformer", feature_transformer), ("learner", learner)])
+    param_grid = [{"learner__C": numpy.arange(0, 1, 0.2), "feature_transformer__gamma": gammas,
+                    "feature_transformer__n_components": 2**numpy.arange(4, 8)}]
+    grid_search = GridSearchCV(learner_pipeline, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    learner_list.append(grid_search)
 
 
-# Then do the learning
-for i in range(10**6, num_examples, block_size):
-    print(i)
-    df = pandas.read_csv(input_filename, skiprows=i, nrows=block_size)
+    feature_transformer = Nystroem(gamma=.2, random_state=1)
+    learner = PassiveAggressiveClassifier(n_iter=10)
+    learner_pipeline = pipeline.Pipeline([("feature_transformer", feature_transformer), ("learner", learner)])
+    param_grid = [{"learner__C": numpy.arange(0, 1, 0.2), "feature_transformer__gamma": gammas,
+                    "feature_transformer__n_components": 2**numpy.arange(4, 8)}]
+    grid_search = GridSearchCV(learner_pipeline, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    learner_list.append(grid_search)
 
-    X_train = df.values[:, 1:]
-    y_train = df.values[:, 0]
-    X_train = scaler.transform(X_train)
-    learner.partial_fit(X_train, y_train, classes=numpy.array([0, 1]))
+    learner = PassiveAggressiveClassifier(n_iter=10)
+    param_grid = [{"C": numpy.arange(0, 1, 0.2)}]
+    grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    learner_list.append(grid_search)
 
-    try:
-        y_pred_prob = learner.predict_proba(X_test)
-    except:
-        y_pred_prob = learner.decision_function(X_test)
 
-    auc = roc_auc_score(y_test, y_pred_prob)
-    print(auc)
+    feature_transformer = RBFSampler(gamma=.2, random_state=1)
+    learner = SGDClassifier(n_iter=10, penalty="l1")
+    learner_pipeline = pipeline.Pipeline([("feature_transformer", feature_transformer), ("learner", learner)])
+    param_grid = [{"learner__alpha": 10.0**numpy.arange(-5, 2), "feature_transformer__gamma": gammas,
+                    "feature_transformer__n_components": 2**numpy.arange(4, 8)}]
+    grid_search = GridSearchCV(learner_pipeline, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    learner_list.append(grid_search)
+
+
+    feature_transformer = Nystroem(gamma=.2, random_state=1)
+    learner = SGDClassifier(n_iter=10, penalty="l1")
+    learner_pipeline = pipeline.Pipeline([("feature_transformer", feature_transformer), ("learner", learner)])
+    param_grid = [{"learner__alpha": 10.0**numpy.arange(-5, 2), "feature_transformer__gamma": gammas,
+                    "feature_transformer__n_components": 2**numpy.arange(4, 8)}]
+    grid_search = GridSearchCV(learner_pipeline, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    learner_list.append(grid_search)
+
+    learner = SGDClassifier(n_iter=10, penalty="l1")
+    param_grid = [{"alpha": 10.0**numpy.arange(-5, 2)}]
+    grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    learner_list.append(grid_search)
+
+    feature_transformer = RBFSampler(gamma=.2, random_state=1)
+    learner = GaussianNB()
+    learner_pipeline = pipeline.Pipeline([("feature_transformer", feature_transformer), ("learner", learner)])
+    param_grid = [{"feature_transformer__gamma": gammas,
+                    "feature_transformer__n_components": 2**numpy.arange(4, 8)}]
+    grid_search = GridSearchCV(learner_pipeline, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    learner_list.append(grid_search)
+
+    feature_transformer = Nystroem(gamma=.2, random_state=1)
+    learner = GaussianNB()
+    learner_pipeline = pipeline.Pipeline([("feature_transformer", feature_transformer), ("learner", learner)])
+    param_grid = [{"feature_transformer__gamma": gammas,
+                    "feature_transformer__n_components": 2**numpy.arange(4, 8)}]
+    grid_search = GridSearchCV(learner_pipeline, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    learner_list.append(grid_search)
+
+    learner = GaussianNB()
+    learner_list.append(learner)
+
+    aucs = []
+
+    for learner in learner_list:
+        learner.fit(X_train, y_train)
+
+        try:
+            y_pred_prob = learner.predict_proba(X_test)[:, 1]
+        except:
+            y_pred_prob = learner.decision_function(X_test)
+
+        auc = roc_auc_score(y_test, y_pred_prob)
+        aucs.append(auc)
+        print(auc)
+
+    print(aucs)
+
+
+def smallscale2():
+    # Feature generation using random forests
+    forest = RandomForestClassifier(n_estimators=64, n_jobs=-1)
+    forest.fit(X_train, y_train)
+    encoder = OneHotEncoder()
+    encoder.fit(forest.apply(X_train))
+
+    learner_list = []
+
+    learner = PassiveAggressiveClassifier(n_iter=10)
+    param_grid = [{"C": numpy.arange(0, 1.5, 0.1)}]
+    grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    learner_list.append(grid_search)
+
+    learner = SGDClassifier(n_iter=10, penalty="l1")
+    param_grid = [{"alpha": 10.0**numpy.arange(-5, 0), "penalty": ["l2", "l1", "elasticnet"]}]
+    grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    learner_list.append(grid_search)
+
+    aucs = []
+
+    for learner in learner_list:
+        X_train2 = encoder.transform(forest.apply(X_train))
+        learner.fit(X_train2, y_train)
+
+        X_test2 = encoder.transform(forest.apply(X_test))
+
+        try:
+            y_pred_prob = learner.predict_proba(X_test2)[:, 1]
+        except:
+            y_pred_prob = learner.decision_function(X_test2)
+
+        auc = roc_auc_score(y_test, y_pred_prob)
+        aucs.append(auc)
+        print(auc)
+
+    print(aucs)
+
+
+def largescale(X_train, y_train, X_test, y_test):
+    # Feature generation using random forests
+    forest = RandomForestClassifier(n_estimators=64, n_jobs=-1)
+    forest.fit(X_train, y_train)
+    encoder = OneHotEncoder()
+    encoder.fit(forest.apply(X_train))
+
+    grid_search_list = []
+    learner_list = []
+
+    # Do some model selection on the model selection set
+    learner = PassiveAggressiveClassifier(n_iter=10)
+    param_grid = [{"C": numpy.arange(0, 1.5, 0.1)}]
+    grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    grid_search_list.append(grid_search)
+
+    learner = SGDClassifier(n_iter=10, penalty="l1")
+    param_grid = [{"alpha": 10.0**numpy.arange(-5, 0), "penalty": ["l2", "l1", "elasticnet"]}]
+    grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    grid_search_list.append(grid_search)
+
+    for grid_search in grid_search_list:
+        X_train2 = encoder.transform(forest.apply(X_train))
+        grid_search.fit(X_train2, y_train)
+        learner_list.append(grid_search.best_estimator_)
+
+    aucs = []
+
+    # Then do the learning
+    for i in range(block_size, num_train_examples, block_size):
+        print(i)
+        df = pandas.read_csv(input_filename, skiprows=i, nrows=block_size)
+
+        X_train = df.values[:, 1:]
+        y_train = numpy.array(df.values[:, 0], numpy.int)
+        X_train = scaler.transform(X_train)
+
+        auc_row = []
+
+        for learner in learner_list:
+            X_train2 = encoder.transform(forest.apply(X_train))
+            learner.partial_fit(X_train2, y_train, classes=numpy.array([0, 1]))
+
+            X_test2 = encoder.transform(forest.apply(X_test))
+
+            try:
+                y_pred_prob = learner.predict_proba(X_test2)[:, 1]
+            except:
+                y_pred_prob = learner.decision_function(X_test2)
+
+            auc = roc_auc_score(y_test, y_pred_prob)
+            auc_row.append(auc)
+            print(auc)
+
+        aucs.append(auc_row)
+
+    print(aucs)
+
+largescale(X_train, y_train, X_test, y_test)
