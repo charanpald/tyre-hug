@@ -1,9 +1,9 @@
 import pandas
 import numpy
-from sklearn.linear_model import SGDClassifier, PassiveAggressiveClassifier
+from sklearn.linear_model import SGDClassifier, PassiveAggressiveClassifier, Perceptron
 from sklearn.grid_search import GridSearchCV
 from sklearn.naive_bayes import GaussianNB, MultinomialNB, BernoulliNB
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.metrics import roc_auc_score
 from sklearn import pipeline
 from sklearn.kernel_approximation import Nystroem, RBFSampler
@@ -15,7 +15,7 @@ input_filename = data_dir + "HIGGS.csv"
 num_examples = 11 * 10**6
 num_test_examples = 5 * 10**5
 num_train_examples = num_examples - num_test_examples
-block_size = 2 * 10**5
+block_size = int(1.0 * 10**5)
 
 # Generate test set (same as in paper)
 df = pandas.read_csv(input_filename, skiprows=num_train_examples, nrows=num_test_examples)
@@ -125,48 +125,77 @@ def smallscale():
     print(aucs)
 
 
-def smallscale2():
+def largescale2(X_train, y_train, X_test, y_test):
     # Feature generation using random forests
-    forest = RandomForestClassifier(n_estimators=64, n_jobs=-1)
-    forest.fit(X_train, y_train)
-    encoder = OneHotEncoder()
-    encoder.fit(forest.apply(X_train))
+    feature_transformer = Nystroem(n_components=64, gamma=0.01)
+    feature_transformer.fit(numpy.zeros((1, X_train.shape[1])))
 
+    grid_search_list = []
     learner_list = []
 
-    learner = PassiveAggressiveClassifier(n_iter=10)
+    # Do some model selection on the model selection set
+    learner = PassiveAggressiveClassifier(n_iter=1)
     param_grid = [{"C": numpy.arange(0, 1.5, 0.1)}]
     grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
-    learner_list.append(grid_search)
+    grid_search_list.append(grid_search)
 
-    learner = SGDClassifier(n_iter=10, penalty="l1")
-    param_grid = [{"alpha": 10.0**numpy.arange(-5, 0), "penalty": ["l2", "l1", "elasticnet"]}]
+    learner = Perceptron(n_iter=1, penalty="elasticnet")
+    param_grid = [{"alpha": 10.0**numpy.arange(-5, 0)}]
     grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
-    learner_list.append(grid_search)
+    grid_search_list.append(grid_search)
+
+    learner = SGDClassifier(n_iter=1, penalty="elasticnet")
+    param_grid = [{"alpha": 10.0**numpy.arange(-5, 0), "l1_ratio": numpy.linspace(0, 1, 10)}]
+    grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    grid_search_list.append(grid_search)
+
+    # Include Naive Bayes
+    learner_list.append(MultinomialNB())
+    learner_list.append(BernoulliNB())
+
+
+    for grid_search in grid_search_list:
+        X_train2 = feature_transformer.transform(X_train)
+        grid_search.fit(X_train2, y_train)
+        learner_list.append(grid_search.best_estimator_)
 
     aucs = []
 
-    for learner in learner_list:
-        X_train2 = encoder.transform(forest.apply(X_train))
-        learner.fit(X_train2, y_train)
+    # Then do the learning
+    # TODO: Check we don't infringe on the test set
+    for i in range(block_size, num_train_examples, block_size):
+        print(i)
+        df = pandas.read_csv(input_filename, skiprows=i, nrows=block_size)
 
-        X_test2 = encoder.transform(forest.apply(X_test))
+        X_train = df.values[:, 1:]
+        y_train = numpy.array(df.values[:, 0], numpy.int)
+        X_train = scaler.transform(X_train)
 
-        try:
-            y_pred_prob = learner.predict_proba(X_test2)[:, 1]
-        except:
-            y_pred_prob = learner.decision_function(X_test2)
+        auc_row = []
 
-        auc = roc_auc_score(y_test, y_pred_prob)
-        aucs.append(auc)
-        print(auc)
+        for learner in learner_list:
+            X_train2 = feature_transformer.transform(X_train)
+            learner.partial_fit(X_train2, y_train, classes=numpy.array([0, 1]))
+
+            X_test2 = feature_transformer.transform(X_test)
+
+            try:
+                y_pred_prob = learner.predict_proba(X_test2)[:, 1]
+            except:
+                y_pred_prob = learner.decision_function(X_test2)
+
+            auc = roc_auc_score(y_test, y_pred_prob)
+            auc_row.append(auc)
+            print(auc)
+
+        aucs.append(auc_row)
 
     print(aucs)
-
+    return numpy.array(aucs)
 
 def largescale(X_train, y_train, X_test, y_test):
     # Feature generation using random forests
-    forest = RandomForestClassifier(n_estimators=64, n_jobs=-1)
+    forest = RandomForestClassifier(n_estimators=128, n_jobs=-1)
     forest.fit(X_train, y_train)
     encoder = OneHotEncoder()
     encoder.fit(forest.apply(X_train))
@@ -175,24 +204,38 @@ def largescale(X_train, y_train, X_test, y_test):
     learner_list = []
 
     # Do some model selection on the model selection set
-    learner = PassiveAggressiveClassifier(n_iter=10)
-    param_grid = [{"C": numpy.arange(0, 1.5, 0.1)}]
-    grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
-    grid_search_list.append(grid_search)
+    # learner = PassiveAggressiveClassifier(n_iter=1)
+    # param_grid = [{"C": numpy.arange(0, 1.5, 0.1)}]
+    # grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    # grid_search_list.append(grid_search)
 
-    learner = SGDClassifier(n_iter=10, penalty="l1")
-    param_grid = [{"alpha": 10.0**numpy.arange(-5, 0), "penalty": ["l2", "l1", "elasticnet"]}]
-    grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    # learner = Perceptron(n_iter=1, penalty="elasticnet")
+    # param_grid = [{"alpha": 10.0**numpy.arange(-5, 0)}]
+    # grid_search = GridSearchCV(learner, param_grid, n_jobs=-1, verbose=2, scoring=metric, refit=True)
+    # grid_search_list.append(grid_search)
+    #
+    # Try different learning rates
+    learner = SGDClassifier(n_iter=5, penalty="elasticnet", learning_rate="optimal", eta0=0.1)
+    param_grid = [{"alpha": 10.0**numpy.arange(-5, 0), "l1_ratio": numpy.linspace(0, 1, 10)}]
+    grid_search = GridSearchCV(learner, param_grid, n_jobs=2, verbose=2, scoring=metric, refit=True)
     grid_search_list.append(grid_search)
+    #
+    # # Include Naive Bayes
+    # learner_list.append(MultinomialNB())
+    # learner_list.append(BernoulliNB())
+
 
     for grid_search in grid_search_list:
         X_train2 = encoder.transform(forest.apply(X_train))
         grid_search.fit(X_train2, y_train)
         learner_list.append(grid_search.best_estimator_)
 
+    print(learner_list)
+
     aucs = []
 
     # Then do the learning
+    # TODO: Check we don't infringe on the test set
     for i in range(block_size, num_train_examples, block_size):
         print(i)
         df = pandas.read_csv(input_filename, skiprows=i, nrows=block_size)
@@ -221,5 +264,6 @@ def largescale(X_train, y_train, X_test, y_test):
         aucs.append(auc_row)
 
     print(aucs)
+    return numpy.array(aucs)
 
-largescale(X_train, y_train, X_test, y_test)
+aucs = largescale(X_train, y_train, X_test, y_test)
