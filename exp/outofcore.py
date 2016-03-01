@@ -87,7 +87,9 @@ def train(input_filename, num_train_examples, num_test_examples, block_size):
             aucs.append([i + num_train_examples * j, auc])
             print(aucs[-1])
 
-    return pandas.DataFrame(aucs, index=0, columns=["AUC"])
+    df = pandas.DataFrame(aucs, columns=["Iterations", "AUC"])
+    df = df.set_index("Iterations")
+    return df
 
 block_size = 10**5
 num_examples = 11 * 10**6
@@ -99,3 +101,5 @@ input_filename = data_dir + "HIGGS.csv"
 aucs = train(input_filename, num_train_examples, num_test_examples, block_size)
 print(aucs)
 aucs.to_csv("aucs.csv")
+
+aucs.plot(legend=False)
