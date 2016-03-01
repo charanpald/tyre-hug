@@ -58,7 +58,7 @@ def train(input_filename, num_train_examples, num_test_examples, block_size):
     X_train, y_train, X_test, y_test, scaler = loaddata(input_filename, num_test_examples, block_size)
 
     # Feature generation using random forests
-    forest = RandomForestClassifier(n_estimators=100, n_jobs=-1)
+    forest = RandomForestClassifier(n_estimators=150, n_jobs=-1)
     forest.fit(X_train, y_train)
     encoder = OneHotEncoder()
     encoder.fit(forest.apply(X_train))
@@ -84,10 +84,10 @@ def train(input_filename, num_train_examples, num_test_examples, block_size):
             learner.partial_fit(X_train, y_train, classes=numpy.array([0, 1]))
             y_pred_prob = learner.decision_function(X_test)
             auc = roc_auc_score(y_test, y_pred_prob)
-            aucs.append([i + block_size * j, auc])
+            aucs.append([i + num_train_examples * j, auc])
             print(aucs[-1])
 
-    return pandas.DataFrame(aucs)
+    return pandas.DataFrame(aucs, index=0, columns=["AUC"])
 
 block_size = 10**5
 num_examples = 11 * 10**6
