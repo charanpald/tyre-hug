@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 
 def univariate_stats():
+    # Generate 1000 random numbers from a normal distribution
     num_examples = 1000
     z = pandas.Series(numpy.random.randn(num_examples))
 
