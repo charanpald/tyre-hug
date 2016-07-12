@@ -49,5 +49,5 @@ for train_inds, test_inds in KFold(X.shape[0], n_folds=n_folds):
     y_pred = numpy.argmax(y_pred, 1)
     ann_error += zero_one_loss(y_test, y_pred)
 
-print(svc_error/n_folds)
-print(ann_error/n_folds)
+print(svc_error / n_folds)
+print(ann_error / n_folds)

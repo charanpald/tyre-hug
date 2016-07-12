@@ -17,7 +17,7 @@ def time_reps(func, params, reps):
     for s in range(reps):
         func(*params)
     print("Executed " + str(func))
-    return (time.time()-start)/reps
+    return (time.time() - start) / reps
 
 """
 Compare and contrast different methods of computing the SVD

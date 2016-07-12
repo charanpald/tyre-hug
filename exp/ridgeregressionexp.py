@@ -7,11 +7,12 @@ from sklearn.metrics import mean_absolute_error
 
 
 class RidgeRegression(object):
+
     def __init__(self, lmbda=0.1):
         self.lmbda = lmbda
 
     def fit(self, X, y):
-        C = X.T.dot(X) + self.lmbda*numpy.eye(X.shape[1])
+        C = X.T.dot(X) + self.lmbda * numpy.eye(X.shape[1])
         self.w = numpy.linalg.inv(C).dot(X.T.dot(y))
 
     def predict(self, X):

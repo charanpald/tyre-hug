@@ -67,7 +67,7 @@ def train(input_filename, num_train_examples, num_test_examples, block_size):
     weights = float(y_train.shape[0]) / (2 * numpy.bincount(y_train))
     class_weights = {0: weights[0], 1: weights[1]}
     learner = SGDClassifier(loss="hinge", penalty="l2", learning_rate="invscaling", alpha=0.0001, average=10**4, eta0=1.0,
-                class_weight=class_weights)
+                            class_weight=class_weights)
 
     num_passes = 3
     aucs = []

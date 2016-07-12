@@ -1,5 +1,9 @@
+#!/usr/bin/python
+# -*- coding: iso-8859-15 -*-
 import pandas
-import sklearn, sklearn.feature_extraction, sklearn.svm
+import sklearn
+import sklearn.feature_extraction
+import sklearn.svm
 
 df = pandas.read_csv("../data/spam/SMSSpamCollection", sep="\t", header=-1)
 

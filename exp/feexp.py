@@ -55,5 +55,5 @@ for train_inds, test_inds in KFold(X.shape[0], n_folds=n_folds):
     y_pred = svc.predict(X_test2)
     pls_error += zero_one_loss(y_test, y_pred)
 
-print(pca_error/n_folds)
-print(pls_error/n_folds)
+print(pca_error / n_folds)
+print(pls_error / n_folds)
