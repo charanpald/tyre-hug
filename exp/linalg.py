@@ -48,9 +48,9 @@ def benchmark_numpy():
 
 
 def benchmark_theano():
-    import theano.tensor as T
     from theano import function
     import theano
+    import theano.tensor as T
     print("Benchmarking Theano " + str(theano.__version__))
 
     times = []
@@ -63,35 +63,35 @@ def benchmark_theano():
         current_times = [i]
 
         global f
-        At = theano.shared(A)
-        Bt = theano.shared(B)
+        A = theano.shared(A)
+        B = theano.shared(B)
 
-        z = T.dot(At, Bt)
+        z = T.dot(A, B)
         f = function([], z)
         timer = timeit.Timer("f()", "from __main__ import f")
         current_times.append(numpy.min(timer.repeat(num_repeats, 1)))
 
-        z = T.exp(At)
+        z = T.exp(A)
         f = function([], z)
         timer = timeit.Timer("f()", "from __main__ import f")
         current_times.append(numpy.min(timer.repeat(num_repeats, 1)))
 
-        z = T.sum(At)
+        z = T.sum(A)
         f = function([], z)
         timer = timeit.Timer("f()", "from __main__ import f")
         current_times.append(numpy.min(timer.repeat(num_repeats, 1)))
 
-        z = T.add(At, Bt)
+        z = T.add(A, B)
         f = function([], z)
         timer = timeit.Timer("f()", "from __main__ import f")
         current_times.append(numpy.min(timer.repeat(num_repeats, 1)))
 
-        z = T.mean(At)
+        z = T.mean(A)
         f = function([], z)
         timer = timeit.Timer("f()", "from __main__ import f")
         current_times.append(numpy.min(timer.repeat(num_repeats, 1)))
 
-        z = T.min(At)
+        z = T.min(A)
         f = function([], z)
         timer = timeit.Timer("f()", "from __main__ import f")
         current_times.append(numpy.min(timer.repeat(num_repeats, 1)))
@@ -182,6 +182,9 @@ def plot_times():
         plt.xlabel("size")
         plt.ylabel("time (s)")
         plt.plot()
+
+        # print(title)
+        # print(numpy.c_[numpy_times[:, i + 1], theano_times[:, i + 1], tensorflow_times[:, i + 1]])
 
     plt.show()
 
