@@ -2,6 +2,7 @@ import numpy
 import timeit
 import matplotlib.pyplot as plt
 import sys
+from settings import DATA_DIR, get_dir
 
 numpy.random.seed(21)
 num_repeats = 20
@@ -9,6 +10,7 @@ min_size = 500
 max_size = 5001
 step = 500
 
+data_dir = get_dir(DATA_DIR)
 
 def benchmark_numpy():
     times = []
@@ -44,7 +46,7 @@ def benchmark_numpy():
 
     times = numpy.array(times)
     print(times)
-    numpy.save("numpy_times", times)
+    numpy.save(data_dir + "numpy_times", times)
 
 
 def benchmark_theano():
@@ -100,7 +102,7 @@ def benchmark_theano():
 
     times = numpy.array(times)
     print(times)
-    numpy.save("theano_times", times)
+    numpy.save(data_dir + "theano_times", times)
 
 
 def benchmark_tensorflow():
@@ -162,13 +164,13 @@ def benchmark_tensorflow():
 
     times = numpy.array(times)
     print(times)
-    numpy.save("tensorflow_times", times)
+    numpy.save(data_dir +  "tensorflow_times", times)
 
 
 def plot_times():
-    numpy_times = numpy.load("numpy_times.npy")
-    theano_times = numpy.load("theano_times.npy")
-    tensorflow_times = numpy.load("tensorflow_times.npy")
+    numpy_times = numpy.load(data_dir + "numpy_times.npy")
+    theano_times = numpy.load(data_dir + "theano_times.npy")
+    tensorflow_times = numpy.load(data_dir + "tensorflow_times.npy")
 
     titles = ["dot", "exp", "sum", "add", "mean", "min"]
 
