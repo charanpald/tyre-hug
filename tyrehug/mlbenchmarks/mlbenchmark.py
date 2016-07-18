@@ -5,7 +5,7 @@ import sklearn.svm as svm
 import sklearn.cross_validation as cross_validation
 import sklearn.metrics as metrics
 import sklearn.preprocessing as preprocessing
-from settings import DATA_DIR, get_dir
+from tyrehug.settings import DATA_DIR, get_dir
 
 learner = svm.SVC(kernel='linear', C=1)
 data_dir = get_dir(os.path.join(DATA_DIR, "mlbenchmark"))
@@ -58,3 +58,5 @@ for dataset_name, dataset in datasets_list:
     print(dataset_name)
     print(numpy.unique(dataset.target))
     benchmark(learner, dataset, os.path.join(data_dir, "svm_" + dataset_name))
+
+# TODO: Put in timings, memory, store in database for easy querying, visualise somehow
