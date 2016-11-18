@@ -137,7 +137,7 @@ def benchmark_tensorflow():
         sess.close()
 
         sess = tensorflow.Session()
-        result = tensorflow.sum(A)
+        result = tensorflow.reduce_sum(A)
         timer = timeit.Timer("sess.run(result)", setup="import tensorflow; from __main__ import sess, A, B, result")
         current_times.append(numpy.min(timer.repeat(num_repeats, 1)))
         sess.close()
