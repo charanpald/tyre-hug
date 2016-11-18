@@ -27,13 +27,13 @@ def benchmark_numpy():
         timer = timeit.Timer("numpy.dot(A, B)", "import numpy; from __main__ import A, B")
         current_times.append(numpy.min(timer.repeat(num_repeats, 1)))
 
-        timer = timeit.Timer("A + B", "import numpy; from __main__ import A, B")
-        current_times.append(numpy.min(timer.repeat(num_repeats, 1)))
-
         timer = timeit.Timer("numpy.exp(A)", "import numpy; from __main__ import A")
         current_times.append(numpy.min(timer.repeat(num_repeats, 1)))
 
         timer = timeit.Timer("numpy.sum(A)", "import numpy; from __main__ import A")
+        current_times.append(numpy.min(timer.repeat(num_repeats, 1)))
+
+        timer = timeit.Timer("A + B", "import numpy; from __main__ import A, B")
         current_times.append(numpy.min(timer.repeat(num_repeats, 1)))
 
         timer = timeit.Timer("numpy.mean(A)", "import numpy; from __main__ import A")
@@ -137,7 +137,7 @@ def benchmark_tensorflow():
         sess.close()
 
         sess = tensorflow.Session()
-        result = tensorflow.exp(A)
+        result = tensorflow.sum(A)
         timer = timeit.Timer("sess.run(result)", setup="import tensorflow; from __main__ import sess, A, B, result")
         current_times.append(numpy.min(timer.repeat(num_repeats, 1)))
         sess.close()
@@ -164,7 +164,7 @@ def benchmark_tensorflow():
 
     times = numpy.array(times)
     print(times)
-    numpy.save(data_dir +  "tensorflow_times", times)
+    numpy.save(data_dir + "tensorflow_times", times)
 
 
 def plot_times():
