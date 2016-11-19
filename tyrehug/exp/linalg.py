@@ -2,7 +2,7 @@ import numpy
 import timeit
 import matplotlib.pyplot as plt
 import sys
-from settings import DATA_DIR, get_dir
+from tyrehug.settings import DATA_DIR, get_dir
 
 numpy.random.seed(21)
 num_repeats = 20
@@ -45,8 +45,20 @@ def benchmark_numpy():
         times.append(current_times)
 
     times = numpy.array(times)
-    print(times)
-    numpy.save(data_dir + "numpy_times", times)
+    filename = data_dir + "numpy_times"
+    numpy.save(filename, times)
+    print("Saved results as {}.npy".format(filename))
+
+    print("\nResults check")
+    print("-"*14)
+
+    # Print results to compare them
+    print("||dot(A, B)||={}".format(numpy.linalg.norm(numpy.dot(A, B))))
+    print("||exp(A, B)||={}".format(numpy.linalg.norm(numpy.exp(A, B))))
+    print("sum(A)={}".format(numpy.sum(A)))
+    print("||A+B||={}".format(numpy.linalg.norm(A + B)))
+    print("mean(A)={}".format(numpy.mean(A)))
+    print("min(A)={}".format(numpy.min(A)))
 
 
 def benchmark_theano():
@@ -101,9 +113,24 @@ def benchmark_theano():
         times.append(current_times)
 
     times = numpy.array(times)
-    print(times)
-    numpy.save(data_dir + "theano_times", times)
+    filename = data_dir + "theano_times"
+    numpy.save(filename, times)
+    print("Saved results as {}.npy".format(filename))
 
+    print("\nResults check")
+    print("-"*14)
+    f = function([], T.dot(A, B))
+    print("||dot(A, B)||={}".format(numpy.linalg.norm(f())))
+    f = function([], T.exp(A))
+    print("||exp(A)||={}".format(numpy.linalg.norm(f())))
+    f = function([], T.sum(A))
+    print("sum(A)={}".format(f()))
+    f = function([], A+B)
+    print("||A+B||={}".format(numpy.linalg.norm(f())))
+    f = function([], T.mean(A))
+    print("mean(A)={}".format(f()))
+    f = function([], T.min(A))
+    print("min(A)={}".format(f()))
 
 def benchmark_tensorflow():
     import tensorflow
@@ -163,9 +190,26 @@ def benchmark_tensorflow():
         times.append(current_times)
 
     times = numpy.array(times)
-    print(times)
-    numpy.save(data_dir + "tensorflow_times", times)
+    filename = data_dir + "tensorflow_times"
+    numpy.save(filename, times)
+    print("Saved results as {}.npy".format(filename))
 
+    print("\nResults check")
+    print("-"*14)
+    sess = tensorflow.Session()
+    result = tensorflow.matmul(A, B)
+    print("||dot(A, B)||={}".format(numpy.linalg.norm(sess.run(result))))
+    result = tensorflow.exp(A)
+    print("||exp(A)||={}".format(numpy.linalg.norm(sess.run(result))))
+    result = tensorflow.reduce_sum(A)
+    print("sum(A)={}".format(sess.run(result)))
+    result = tensorflow.add(A, B)
+    print("||A+B||={}".format(numpy.linalg.norm(sess.run(result))))
+    result = tensorflow.reduce_mean(A)
+    print("mean(A)={}".format(sess.run(result)))
+    result = tensorflow.reduce_min(A)
+    print("min(A)={}".format(sess.run(result)))
+    sess.close()
 
 def plot_times():
     numpy_times = numpy.load(data_dir + "numpy_times.npy")
@@ -186,7 +230,7 @@ def plot_times():
         plt.plot()
 
         # print(title)
-        # print(numpy.c_[numpy_times[:, i + 1], theano_times[:, i + 1], tensorflow_times[:, i + 1]])
+        print(numpy.c_[numpy_times[:, i + 1], theano_times[:, i + 1], tensorflow_times[:, i + 1]])
 
     plt.show()
 
@@ -198,3 +242,5 @@ elif len(sys.argv) == 2 and sys.argv[1] == '3':
     benchmark_tensorflow()
 else:
     plot_times()
+
+# Not sure why A+B results are different in numpy vs theano and tensorflow - could it be precision?
