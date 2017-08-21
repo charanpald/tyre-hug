@@ -54,7 +54,7 @@ def benchmark_numpy():
 
     # Print results to compare them
     print("||dot(A, B)||={}".format(numpy.linalg.norm(numpy.dot(A, B))))
-    print("||exp(A, B)||={}".format(numpy.linalg.norm(numpy.exp(A, B))))
+    print("||exp(A)||={}".format(numpy.linalg.norm(numpy.exp(A))))
     print("sum(A)={}".format(numpy.sum(A)))
     print("||A+B||={}".format(numpy.linalg.norm(A + B)))
     print("mean(A)={}".format(numpy.mean(A)))
@@ -242,5 +242,3 @@ elif len(sys.argv) == 2 and sys.argv[1] == '3':
     benchmark_tensorflow()
 else:
     plot_times()
-
-# Not sure why A+B results are different in numpy vs theano and tensorflow - could it be precision?
