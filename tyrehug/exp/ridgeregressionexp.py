@@ -1,4 +1,6 @@
 import numpy
+import os
+from settings import DATA_DIR
 from sklearn.preprocessing import scale
 from sklearn.cross_validation import train_test_split
 from sklearn.svm import SVR
@@ -26,8 +28,7 @@ class RidgeRegression(object):
         return self
 
 
-data_dir = "../data/"
-Xy = numpy.loadtxt(data_dir + "winequality-white.csv", delimiter=";", skiprows=1)
+Xy = numpy.loadtxt(os.path.join(DATA_DIR, "winequality-white.csv"), delimiter=";", skiprows=1)
 
 X = Xy[:, 0:-1]
 X = scale(X)
